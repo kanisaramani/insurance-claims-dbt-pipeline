@@ -89,7 +89,7 @@ Key Findings
 All Perils: 10.2% · Collision: 7.3% · Liability: 0.7%, roughly a 14x difference between the highest- and lowest-risk policy types.
 
 **2. Claims without a police report are filed fraudulently at a higher rate.**
-No report: 6.0% fraud rate vs. With report: 3.7%, missing documentation is a meaningful (though not definitive) risk signal.
+No report: 6.0% fraud rate vs. With report: 3.7%; missing documentation is a meaningful (though not definitive) risk signal.
 
 **3. First-time claimants show higher fraud rates than repeat claimants.**
 Fraud rate declines steadily from "none" (no prior claims) through "more than 4" prior claims, a counterintuitive result worth flagging: claims history isn't a red flag for fraud in this data; if anything, it's mildly protective.
@@ -99,29 +99,19 @@ Pontiac and Toyota account for a disproportionate share of total claims relative
 
 ---
 
-## Tech Decisions Worth Explaining
-
-Why Snowflake over the existing Azure stack: this portfolio already includes an Azure Databricks pipeline. Building this one on Snowflake (AWS-hosted) demonstrates breadth across cloud ecosystems rather than depth in a single one.
-
-Why dbt Core, not a GUI transformation tool:** dbt Core plus a proper GitHub repo is the industry-standard setup and what "dbt experience" actually means on a job spec: version-controlled SQL, tested, documented, not a point-and-click pipeline.
-
-Why relationships matter more than they look like they should:** a real bug encountered during this build (see below) came from Power BI auto-detecting relationship cardinality backwards because every table in this dataset happens to have the same row count. Fixing it was the difference between every chart showing identical, meaningless bars and a dashboard that actually reveals the findings above.
-
----
-
 ## Challenges & Debugging
 
 1. Table loaded into the wrong Snowflake schema.
-Snowsight's upload wizard silently defaulted to the `PUBLIC` schema instead of the `raw` schema I'd already created. Caught by running `SHOW TABLES IN DATABASE`, which showed ground truth rather than trusting the UI. Fixed with `ALTER TABLE ... RENAME TO` — no data loss, no re-upload needed. Lesson: verify against system metadata, don't assume a wizard preserved context.
+Snowsight's upload wizard silently defaulted to the `PUBLIC` schema instead of the `raw` schema I'd already created. Caught by running `SHOW TABLES IN DATABASE`, which showed ground truth rather than trusting the UI. Fixed with `ALTER TABLE ... RENAME TO`, no data loss, no re-upload needed. Lesson: verify against system metadata, don't assume a wizard preserved context.
 
 2. Corrupted `dbt_project.yml` 
-Removing dbt's boilerplate `example` config left a duplicated, malformed `models:` block — invalid YAML nesting. dbt didn't hard-crash; it threw a soft "custom key" warning and then silently skipped building affected models. Fixed by rewriting the block with correct indentation. Lesson: when a tool's behavior doesn't match its error message, check the raw file structure directly.
+Removing dbt's boilerplate `example` config left a duplicated, malformed `models:` block, invalid YAML nesting. dbt didn't hard-crash; it threw a soft "custom key" warning and then silently skipped building affected models. Fixed by rewriting the block with correct indentation. Lesson: when a tool's behavior doesn't match its error message, check the raw file structure directly.
 
 3. A model that was valid but wouldn't build via `--select`.**
-`dim_policyholder` was correctly configured, enabled, and connected in the dependency graph — confirmed via `dbt ls`, JSON config output, and the lineage graph — yet `dbt run --select dim_policyholder` repeatedly returned "nothing to do," even after a full cache clear. Diagnosed by systematically ruling out causes: checked for a disabled config (wasn't), checked for a `selectors.yml` override (didn't exist), checked environment variables (blank), then tested the inverse (`--exclude`), which worked and proved the model itself was healthy. Root cause was likely a CLI flag-parsing quirk in that session; the practical fix was relying on plain `dbt run` going forward. Lesson: isolate whether a problem is your code or your tooling before assuming either.
+`dim_policyholder` was correctly configured, enabled, and connected in the dependency graph, confirmed via `dbt ls`, JSON config output, and the lineage graph, yet `dbt run --select dim_policyholder` repeatedly returned "nothing to do," even after a full cache clear. Diagnosed by systematically ruling out causes: checked for a disabled config (wasn't), checked for a `selectors.yml` override (didn't exist), checked environment variables (blank), then tested the inverse (`--exclude`), which worked and proved the model itself was healthy. Root cause was likely a CLI flag-parsing quirk in that session; the practical fix was relying on plain `dbt run` going forward. Lesson: isolate whether a problem is your code or your tooling before assuming either.
 
 4. Power BI relationships auto-detected with reversed cardinality.
-Every mart table in this dataset happens to have the same row count (15,420), since it's one claim per policy. Power BI's auto-relationship detection couldn't tell which table should be the "one" side and which the "many" side, and got it backwards for all three dimension-to-fact relationships. Every chart sliced by a dimension showed identical bars, a genuine data-integrity red flag, not a display bug. Diagnosed by testing a simple `Total Claims` measure sliced by category: if a dimension's filter isn't reaching the fact table, even a basic count won't vary. Fixed by manually setting each relationship to "One to many" with the dimension explicitly on the "one" side. Lesson: equal row counts between related tables can defeat automatic relationship detection — don't trust it blindly, verify with a simple test measure.
+Every mart table in this dataset happens to have the same row count (15,420), since it's one claim per policy. Power BI's auto-relationship detection couldn't tell which table should be the "one" side and which the "many" side, and got it backwards for all three dimension-to-fact relationships. Every chart sliced by a dimension showed identical bars, a genuine data-integrity red flag, not a display bug. Diagnosed by testing a simple `Total Claims` measure sliced by category: if a dimension's filter isn't reaching the fact table, even a basic count won't vary. Fixed by manually setting each relationship to "One to many" with the dimension explicitly on the "one" side. Lesson: equal row counts between related tables can defeat automatic relationship detection; don't trust it blindly, verify with a simple test measure.
 
 ---
 
