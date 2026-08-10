@@ -52,7 +52,7 @@ One staging model sits between the raw source and every downstream model; nothin
 
 ## Data Model
 
-https://github.com/kanisaramani/insurance-claims-dbt-pipeline/blob/main/snapshots/Dbt%20Live.png
+snapshots/Dbt Live.png
 
 | Table | Grain | Description |
 |---|---|---|
