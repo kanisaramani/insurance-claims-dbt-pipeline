@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: dim_policyholder
+    description: >
+      Dimension table containing one row per policyholder, with demographic
+      attributes (sex, marital status, age) derived from the raw insurance
+      claims export. Grain: one row per policy_number.
+    columns:
+      - name: policy_number
+        description: Unique identifier for the policyholder's policy. Primary key of this dimension.
+        tests:
+          - unique
+          - not_null
+      - name: policyholder_sex
+        description: Self-reported sex of the policyholder.
+      - name: marital_status
+        description: Marital status of the policyholder at time of policy issuance.
+      - name: policyholder_age
+        description: Age of the policyholder in years.
+      - name: address_change_claim
+        description: Indicates how recently the policyholder changed their address relative to the claim.
+
+  - name: dim_vehicle
+    description: >
+      Dimension table containing one row per insured vehicle. In this dataset
+      each policy maps to exactly one vehicle, so policy_number doubles as
+      the vehicle's natural key — a simplification of a real-world model
+      where one policyholder could insure multiple vehicles.
+    columns:
+      - name: policy_number
+        description: Identifier linking this vehicle record back to its policy. Primary key of this dimension.
+        tests:
+          - unique
+          - not_null
+      - name: vehicle_make
+        description: Manufacturer of the insured vehicle.
+      - name: vehicle_category
+        description: Category or class of the insured vehicle (e.g. sedan, sport).
+      - name: vehicle_price
+        description: Price band of the insured vehicle.
+      - name: age_of_vehicle
+        description: Age of the vehicle in years at time of policy.
+      - name: number_of_cars
+        description: Number of cars associated with the policyholder.
+
+  - name: dim_policy
+    description: >
+      Dimension table containing the contractual details of each insurance
+      policy — type, deductible, agent, and rep information. Grain: one row
+      per policy_number.
+    columns:
+      - name: policy_number
+        description: Unique identifier for the insurance policy. Primary key of this dimension.
+        tests:
+          - unique
+          - not_null
+      - name: policy_type
+        description: Type of insurance policy issued.
+      - name: base_policy
+        description: Base policy category underlying the specific policy type.
+      - name: deductible
+        description: Deductible amount specified on the policy.
+      - name: driver_rating
+        description: Risk rating assigned to the driver on this policy.
+      - name: agent_type
+        description: Type of agent (e.g. internal, external) who sold the policy.
+      - name: rep_number
+        description: Identifier for the sales representative associated with the policy.
+      - name: policy_year
+        description: Year the policy was issued or active.
