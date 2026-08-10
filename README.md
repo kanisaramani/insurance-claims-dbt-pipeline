@@ -44,7 +44,7 @@ Power BI  →  relationships, DAX measures, dashboard
 
 ### dbt Lineage Graph
 
-
+snapshots/Data Linkage.png
 
 One staging model sits between the raw source and every downstream model; nothing queries `raw` directly. Three dimensions and one fact table make up the analytics-ready layer; each dimension is deduplicated on `policy_number`, and the fact table is left undeduplicated by design so that duplicate claim rows surface as a genuine data quality issue rather than being silently hidden.
 
