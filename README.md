@@ -81,10 +81,7 @@ Done. PASS=9 WARN=0 ERROR=0 SKIP=0
 
 ## Dashboard
 
-
-
-
-
+snapshots/Insurance Powerbi.png
 
 Key Findings
 
